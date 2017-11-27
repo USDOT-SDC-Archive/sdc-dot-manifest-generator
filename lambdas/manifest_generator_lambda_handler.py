@@ -46,7 +46,11 @@ def __initiate_manifest_process(batch_id):
         functools.partial(__process_manifest_files, batch_id, "irregularity"),
         functools.partial(__process_manifest_files, batch_id, "irregularity_point_sequence"),
         functools.partial(__process_manifest_files, batch_id, "irregularity_alert"),
-        functools.partial(__process_manifest_files, batch_id, "irregularity_jam")
+        functools.partial(__process_manifest_files, batch_id, "irregularity_jam"),
+        functools.partial(__process_manifest_files, batch_id, "corridor_reading"),
+        functools.partial(__process_manifest_files, batch_id, "corridor_point_sequence"),
+        functools.partial(__process_manifest_files, batch_id, "corridor_alert"),
+        functools.partial(__process_manifest_files, batch_id, "corridor_jam")
     )
 
 
@@ -54,7 +58,7 @@ def __process_manifest_files(batch_id, table_name):
     try:
         LoggerUtility.logInfo("Batch id - {} and table_name - {}".format(batch_id, table_name))
         curated_records_table_name = os.environ['DDB_CURATED_RECORDS_TABLE_ARN'].split('/')[1]
-        curated_records_index_name = 'BatchId-DataTableName-index'
+        curated_records_index_name = os.environ['DDB_CURATED_RECORDS_INDEX_NAME']
         manifest_files_table_name = os.environ['DDB_MANIFEST_TABLE_ARN'].split('/')[1]
         curated_bucket_name = os.environ['CURATED_BUCKET_NAME']
         dynamodb = boto3.resource('dynamodb')
@@ -127,7 +131,7 @@ def generate_manifest_files(event, context):
 
     batch_id = __get_ready_for_processing_batches(batch_table_name)
     if batch_id != "":
-        __run_in_parallel(__initiate_manifest_process(batch_id), max_workers=2)
+        __run_in_parallel(__initiate_manifest_process(batch_id), max_workers=15)
         delete_batch_id(batch_id, batch_table_name)
 
     LoggerUtility.logInfo("Completed manifest process")
