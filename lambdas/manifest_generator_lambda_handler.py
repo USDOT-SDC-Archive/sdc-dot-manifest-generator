@@ -67,41 +67,56 @@ def __process_manifest_files(batch_id, table_name):
             IndexName=curated_records_index_name,
             KeyConditionExpression=Key('BatchId').eq(batch_id) & Key('DataTableName').eq(table_name)
         )
-        entries_list = []
-        for item in response['Items']:
-            entries = dict()
-            entries['url'] = item['S3Key']
-            entries['mandatory'] = bool("true")
-            entries_list.append(entries)
 
-        if len(entries_list) > 0:
-            json_data = json.dumps(entries_list)
-            modified_json = json.dumps('{"entries":' + json_data + '}')
-            manifest_json = json.JSONDecoder().decode(modified_json)
-            output_to_file = json.loads(manifest_json)
-            manifest_file_name = "/tmp/" + str(uuid.uuid4()) + ".manifest"
-            with open(manifest_file_name, 'w') as manifest_file:
-                json.dump(output_to_file, manifest_file)
+        if response['Count'] > 0:
+            records = response['Items']
+            while response.get('LastEvaluatedKey'):
+                LoggerUtility.logInfo("More records present, so querying the index to get additional records "
+                                      "for table - {}".format(table_name))
+                response = table.query(ExclusiveStartKey=response['LastEvaluatedKey'])
+                records.extend(response['Items'])
+            LoggerUtility.logInfo("Completed fetching all records from index for table - {} "
+                                  "with count - {}".format(table_name, len(records)))
+            entries_list = []
+            for record in records:
+                entries = dict()
+                entries['url'] = record['S3Key']
+                entries['mandatory'] = bool("true")
+                entries_list.append(entries)
 
-            manifest_s3_key = "manifest/" + batch_id + "/" + table_name + "/" + os.path.basename(manifest_file_name)
-            s3 = boto3.client('s3')
+            if len(entries_list) > 0:
+                json_data = json.dumps(entries_list)
+                modified_json = json.dumps('{"entries":' + json_data + '}')
+                manifest_json = json.JSONDecoder().decode(modified_json)
+                output_to_file = json.loads(manifest_json)
+                manifest_file_name = "/tmp/" + str(uuid.uuid4()) + ".manifest"
+                with open(manifest_file_name, 'w') as manifest_file:
+                    json.dump(output_to_file, manifest_file)
 
-            s3.upload_file(manifest_file_name, curated_bucket_name, manifest_s3_key)
-            LoggerUtility.logInfo("Successfully uploaded manifest file to s3 for batch id - {} and table name - {}".format(batch_id, table_name))
+                manifest_s3_key = "manifest/" + batch_id + "/" + table_name + "/" + os.path.basename(manifest_file_name)
+                s3 = boto3.client('s3')
 
-            table = dynamodb.Table(manifest_files_table_name)
-            response = table.put_item(
-                Item={
-                    "ManifestId": str(uuid.uuid4()),
-                    "BatchId": batch_id,
-                    "TableName": table_name,
-                    "ManifestS3Key": manifest_s3_key,
-                    "FileStatus": "open"
-                }
-            )
-            LoggerUtility.logInfo("Response from put item - {}".format(response))
-            LoggerUtility.logInfo("Successfully created an item in dyanmodb table - {} "
-                                  "for batch id - {} and table name - {}".format(manifest_files_table_name, batch_id, table_name))
+                s3.upload_file(manifest_file_name, curated_bucket_name, manifest_s3_key)
+                LoggerUtility.logInfo(
+                    "Successfully uploaded manifest file to s3 for batch id - {} and table name - {}".format(batch_id,
+                                                                                                             table_name))
+
+                table = dynamodb.Table(manifest_files_table_name)
+                response = table.put_item(
+                    Item={
+                        "ManifestId": str(uuid.uuid4()),
+                        "BatchId": batch_id,
+                        "TableName": table_name,
+                        "ManifestS3Key": manifest_s3_key,
+                        "FileStatus": "open"
+                    }
+                )
+                LoggerUtility.logInfo("Response from put item - {}".format(response))
+                LoggerUtility.logInfo("Successfully created an item in dyanmodb table - {} for batch id - {} "
+                                      "and table name - {}".format(manifest_files_table_name, batch_id, table_name))
+        else:
+            LoggerUtility.logInfo("No records to process for table - {}. Exiting the process".format(table_name))
+
     except Exception as e:
         LoggerUtility.logError("Failed to upload manifest file for batch id - {} and table name - {}".format(batch_id, table_name))
         raise e
