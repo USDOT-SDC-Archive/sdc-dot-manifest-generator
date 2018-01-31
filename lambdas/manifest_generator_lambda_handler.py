@@ -73,7 +73,11 @@ def __process_manifest_files(batch_id, table_name):
             while response.get('LastEvaluatedKey'):
                 LoggerUtility.logInfo("More records present, so querying the index to get additional records "
                                       "for table - {}".format(table_name))
-                response = table.query(ExclusiveStartKey=response['LastEvaluatedKey'])
+                response = table.query(
+                    IndexName=curated_records_index_name,
+                    KeyConditionExpression=Key('BatchId').eq(batch_id) & Key('DataTableName').eq(table_name),
+                    ExclusiveStartKey=response['LastEvaluatedKey']
+                )
                 records.extend(response['Items'])
             LoggerUtility.logInfo("Completed fetching all records from index for table - {} "
                                   "with count - {}".format(table_name, len(records)))
@@ -118,8 +122,9 @@ def __process_manifest_files(batch_id, table_name):
             LoggerUtility.logInfo("No records to process for table - {}. Exiting the process".format(table_name))
 
     except Exception as e:
-        LoggerUtility.logError("Failed to upload manifest file for batch id - {} and table name - {}".format(batch_id, table_name))
-        raise e
+        LoggerUtility.logError("Failed to upload manifest file for batch id - {} "
+                               "and table name - {} with exception - {}".format(batch_id, table_name, e))
+
 
 
 def delete_batch_id(batch_id, batch_table_name):
