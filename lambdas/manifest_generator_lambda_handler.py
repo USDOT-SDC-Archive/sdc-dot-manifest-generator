@@ -143,15 +143,29 @@ def delete_batch_id(batch_id, batch_table_name):
         LoggerUtility.logError("Unable to delete batch id - {} from batch table - {}".format(batch_id, batch_table_name))
         raise e
 
+def put_message_sqs(batch_id, sqs_persist):
+    try:
+        sqs = boto3.resource('sqs')
+        queue = sqs.get_queue_by_name(QueueName=sqs_persist)
+        response = queue.send_message(MessageBody={
+                'BatchId': batch_id
+            })
+
+        LoggerUtility.logInfo("Successfully put message to persist sqs for batch id - {}, response - {}".format(batch_id, response))
+    except Exception as e:
+        LoggerUtility.logError("Unable to put message to persist sqs for batch id - {}".format(batch_id))
+        raise e
 
 def generate_manifest_files(event, context):
     LoggerUtility.setLevel()
     LoggerUtility.logInfo("Initiating manifest process")
     batch_table_name = os.environ['DDB_BATCH_TABLE_ARN'].split('/')[1]
+    sqs_persist = os.environ['SQS_PERSIST_ARN'].split('/')[1]
 
     batch_id = __get_ready_for_processing_batches(batch_table_name)
     if batch_id != "":
         __run_in_parallel(__initiate_manifest_process(batch_id), max_workers=15)
+        put_message_sqs(batch_id, sqs_persist)
         delete_batch_id(batch_id, batch_table_name)
 
     LoggerUtility.logInfo("Completed manifest process")
