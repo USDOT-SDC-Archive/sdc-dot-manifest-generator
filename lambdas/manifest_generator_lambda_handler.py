@@ -55,6 +55,7 @@ def __initiate_manifest_process(batch_id):
 
 
 def __process_manifest_files(batch_id, table_name):
+    manifest_file_name = ""
     try:
         LoggerUtility.logInfo("Batch id - {} and table_name - {}".format(batch_id, table_name))
         curated_records_table_name = os.environ['DDB_CURATED_RECORDS_TABLE_ARN'].split('/')[1]
@@ -82,11 +83,22 @@ def __process_manifest_files(batch_id, table_name):
             LoggerUtility.logInfo("Completed fetching all records from index for table - {} "
                                   "with count - {}".format(table_name, len(records)))
             entries_list = []
+            total_curated_records_count = 0
+            records_per_state_dict = dict()
             for record in records:
                 entries = dict()
                 entries['url'] = record['S3Key']
                 entries['mandatory'] = bool("true")
                 entries_list.append(entries)
+                total_curated_records_count += record["TotalNumCuratedRecords"]
+                state = record["State"]
+                if state not in records_per_state_dict:
+                    records_per_state_dict[state] = record["TotalNumCuratedRecords"]
+                else:
+                    current_records = records_per_state_dict.get(state)
+                    total_num_records = current_records + record["TotalNumCuratedRecords"]
+                    records_per_state_dict[state] = total_num_records
+                
 
             if len(entries_list) > 0:
                 json_data = json.dumps(entries_list)
@@ -112,7 +124,9 @@ def __process_manifest_files(batch_id, table_name):
                         "BatchId": batch_id,
                         "TableName": table_name,
                         "ManifestS3Key": manifest_s3_key,
-                        "FileStatus": "open"
+                        "FileStatus": "open",
+                        "TotalCuratedRecordsCount": total_curated_records_count,
+                        "TotalCuratedRecordsByState": records_per_state_dict
                     }
                 )
                 LoggerUtility.logInfo("Response from put item - {}".format(response))
@@ -124,7 +138,9 @@ def __process_manifest_files(batch_id, table_name):
     except Exception as e:
         LoggerUtility.logError("Failed to upload manifest file for batch id - {} "
                                "and table name - {} with exception - {}".format(batch_id, table_name, e))
-
+    finally:
+        if manifest_file_name != "":
+            os.unlink(manifest_file_name)
 
 
 def delete_batch_id(batch_id, batch_table_name):
