@@ -3,7 +3,7 @@
 This lambda function runs every 5 mins and creates a manifest file for each batch whose ReadyForProcessing is set to true.
 
 There are two primary functions that this lambda function serves:
-* **process_manifest_files** - gets all the records for a batch id, generates and uploads the manifest file in S3, creates a corresponding record in the dynamoDB as a part of manifest generation process.
+* **process_manifest_files** - gets all the records for a batch id, generates and uploads the manifest file in S3, creates a record corresponding to the batch id in the dynamoDB as a part of manifest generation process.
 * **put_message_sqs** - puts a message for manifest generation in SQS.
 * **delete_batch_id** - delete the batch id after the completion of the manifest generation.
 
