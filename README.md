@@ -5,7 +5,7 @@ This lambda function runs every 5 mins and creates a manifest file for each batc
 There are two primary functions that this lambda function serves:
 * **process_manifest_files** - gets all the records for a batch id, generates and uploads the manifest file in S3, creates a record corresponding to the batch id in the dynamoDB as a part of manifest generation process.
 * **put_message_sqs** - puts a message for manifest generation in SQS.
-* **delete_batch_id** - delete the batch id after the completion of the manifest generation.
+* **delete_batch_id** - deletes the batch id after the completion of the manifest generation.
 
 <a name="toc"/>
 
@@ -36,13 +36,13 @@ TO BE UPDATED
 ## II. Overview
 A manifest file contains all the curated records per batch per datatable.
 Once a manifest file is created and uploaded to S3, the details are persisted to DynamoDb table <env>-CurationManifestFilesTable with following attributes
-**1.** ManifestId - UUID
-**2.** BatchId - Batch to which the curated record belongs to
-**3.** FileStatus - open/complete depending on if the manifest is processed or not
-**4.** ManifestS3Key - S3 key of the manifest file
-**5.** TableName - Data table name like alert,jam,irregularity e.t.c
-**6.** TotalCuratedRecordsByState - Stores the number of curated records present by state as an array, which will be pushed to cloudwatch to capture custom metrics
-**7.** TotalCuratedRecordsCount - The total number of curated records present in the manifest file
+* ManifestId - UUID
+* BatchId - Batch to which the curated record belongs to
+* FileStatus - open/complete depending on if the manifest is processed or not
+* ManifestS3Key - S3 key of the manifest file
+* TableName - Data table name like alert,jam,irregularity e.t.c
+* TotalCuratedRecordsByState - Stores the number of curated records present by state as an array, which will be pushed to cloudwatch to capture custom metrics
+* TotalCuratedRecordsCount - The total number of curated records present in the manifest file
 
 Once the manifest files are created for a batch, the record is deleted from BatchesTable in dynamoDB so it will not be processed the next time manifest creation happens.
 
