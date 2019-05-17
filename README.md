@@ -1,4 +1,6 @@
-
+[![Build Status](https://travis-ci.com/usdot-jpo-sdc/sdc-dot-manifest-generator.svg?branch=master)](https://travis-ci.com/usdot-jpo-sdc/sdc-dot-manifest-generator)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-jpo-sdc_sdc-dot-manifest-generator&metric=alert_status)](https://sonarcloud.io/dashboard?id=usdot-jpo-sdc_sdc-dot-manifest-generator)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=usdot-jpo-sdc_sdc-dot-manifest-generator&metric=coverage)](https://sonarcloud.io/dashboard?id=usdot-jpo-sdc_sdc-dot-manifest-generator)
 # sdc-dot-manifest-generator
 This lambda function runs every 5 mins and creates a manifest file for each batch whose ReadyForProcessing is set to true.
 
