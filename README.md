@@ -1,0 +1,3 @@
+[![Build Status](https://travis-ci.org/usdot-jpo-sdc-projects/sdc-dot-manifest-generator.svg?branch=master)](https://travis-ci.org/usdot-jpo-sdc-projects/sdc-dot-manifest-generator)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-jpo-sdc_sdc-dot-manifest-generator&metric=alert_status)](https://sonarcloud.io/dashboard?id=usdot-jpo-sdc_sdc-dot-manifest-generator)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=usdot-jpo-sdc_sdc-dot-manifest-generator&metric=coverage)](https://sonarcloud.io/dashboard?id=usdot-jpo-sdc_sdc-dot-manifest-generator)
