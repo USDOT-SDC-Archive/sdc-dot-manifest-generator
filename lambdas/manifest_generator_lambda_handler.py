@@ -2,16 +2,18 @@ from common.logger_utility import *
 import boto3
 from boto3.dynamodb.conditions import Attr, Key
 import functools
-from concurrent.futures import ThreadPoolExecutor
 import json
 import uuid
 import subprocess
 import traceback
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 
-#boto3.setup_default_session(profile_name='sdc')
+
+# boto3.setup_default_session(profile_name='sdc')
 s3Resource = boto3.resource('s3')
-dynamodb = boto3.resource('dynamodb')
+dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
 
 def __run_in_parallel(job_generator, max_workers):
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -21,14 +23,15 @@ def __run_in_parallel(job_generator, max_workers):
         if exception is not None:
             raise exception
 
+
 def getSize(filename):
     st = os.stat(filename)
     return st.st_size
 
+
 def update_batch_status(batch_id, status, is_historical):
     LoggerUtility.logInfo("Place holder to push the batch id and status to ES - {} - {} - {} ".format(batch_id,status,is_historical))
 
-    ##
 
 def __initiate_manifest_process(batch_id, event):
 
@@ -36,12 +39,14 @@ def __initiate_manifest_process(batch_id, event):
         functools.partial(__process_manifest_files, batch_id, event['table_type'], event['is_historical'] == 'true'),
     )
 
+
 def delete_dir(file_download_path):
     try:
         shutil.rmtree(file_download_path)
     except OSError as e:
         LoggerUtility.logError("Error: %s - %s." % (e.filename, e.strerror))
         raise e
+
 
 def __process_manifest_files(batch_id, table_name, is_historical):
     manifest_file_name = ""
@@ -85,7 +90,10 @@ def __process_manifest_files(batch_id, table_name, is_historical):
                 entries['url'] = record['S3Key']
                 count += 1
                 # Download S3 file to /tmp/<UUID>/ folder
-                s3Resource.Bucket(curated_bucket_name).download_file(record['S3Key'].split(curated_bucket_name + "/",1)[1], file_download_path + str(count)+ ".gz")
+                s3Resource.Bucket(curated_bucket_name).download_file(
+                    record['S3Key'].split(curated_bucket_name + "/", 1)[1],
+                    file_download_path + str(count) + ".gz"
+                )
                 entries['mandatory'] = bool("true")
                 entries_list.append(entries)
                 total_curated_records_count += int(record["TotalNumCuratedRecords"])
@@ -96,7 +104,6 @@ def __process_manifest_files(batch_id, table_name, is_historical):
                     current_records = records_per_state_dict.get(state)
                     total_num_records = current_records + int(record["TotalNumCuratedRecords"])
                     records_per_state_dict[state] = total_num_records
-                
 
             if len(entries_list) > 0:
                 json_data = json.dumps(entries_list)
@@ -113,7 +120,8 @@ def __process_manifest_files(batch_id, table_name, is_historical):
                 s3.upload_file(manifest_file_name, curated_bucket_name, manifest_s3_key)
                 LoggerUtility.logInfo(
                     "Successfully uploaded manifest file to s3 for batch id - {} and table name - {}".format(batch_id,
-                                                                                                             table_name))
+                                                                                                             table_name)
+                )
                 # run subprocess commands to gunzip files present in /tmp/<UUID>/ folder
                 # and then add all files to single gz file
                 subprocess.call('gunzip ' + file_download_path + "*", shell=True)
@@ -141,7 +149,6 @@ def __process_manifest_files(batch_id, table_name, is_historical):
                 if response['Items']:
                     LoggerUtility.logInfo("Manifest Id already exists")
                     manifestId = response['Items'][0]['ManifestId']
-
 
                 response = table.put_item(
                     Item={
@@ -174,20 +181,21 @@ def __process_manifest_files(batch_id, table_name, is_historical):
         if manifest_file_name != "":
             os.unlink(manifest_file_name)
 
+
 def generate_manifest_files(event, context):
 
     LoggerUtility.setLevel()
     LoggerUtility.logInfo("Initiating manifest process")
     is_historical = event['is_historical'] == 'true'
-    data={}
+    data = {}
     batch_id = ""
-    if('batch_id' in event):
+    if 'batch_id' in event:
         batch_id = event['batch_id']
         LoggerUtility.logInfo("Received batch id - {}".format(batch_id))
 
     try:
         if batch_id != "":
-            __run_in_parallel(__initiate_manifest_process(batch_id,event), max_workers=15)
+            __run_in_parallel(__initiate_manifest_process(batch_id, event), max_workers=15)
             update_batch_status(batch_id, 'COMPLETED', is_historical)
 
         LoggerUtility.logInfo("Completed manifest process")
