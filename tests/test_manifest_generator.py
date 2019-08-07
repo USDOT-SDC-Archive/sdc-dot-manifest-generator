@@ -133,6 +133,7 @@ def test_process_manifest_files():
     manifest_generator_lambda_handler.dynamodb = MockDynamodb()
     manifest_generator_lambda_handler.dynamodb.Table.put_item = mock.MagicMock()
     boto3.client = mock.MagicMock()
+    manifest_generator_lambda_handler.delete_dir = mock.MagicMock()
 
     manifest_generator_lambda_handler.__process_manifest_files("batch_id", "table_name", is_historical=True)
 
