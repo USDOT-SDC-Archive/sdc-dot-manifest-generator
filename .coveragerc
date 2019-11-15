@@ -32,4 +32,4 @@ omit=
 
 [html]
 directory = html_coverage_reports
-title = Coverage Report for sdc-dot-waze-poll-for-batches-to-manifest
+title = Coverage Report for sdc-dot-manifest-generator
